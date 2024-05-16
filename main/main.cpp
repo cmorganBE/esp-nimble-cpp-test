@@ -26,21 +26,24 @@ extern "C"
     void app_main(void);
 }
 
-void print_chip_info(void);
-
 void app_main(void)
 {
-    printf("Hello world!\n");
-    print_chip_info();
+    ESP_LOGI(TAG, "Hello world!");
 
-    BLEDevice::init("Long name works now");
+    NimBLEDevice::init("NimBLE Test");
+
+    ESP_LOGI(TAG, "Bonded devices:");
+    for (int i = 0; i < NimBLEDevice::getNumBonds(); i++)
+    {
+        ESP_LOGI(TAG, "%d.: %s", i, NimBLEDevice::getBondedAddress(i).toString().c_str());
+    }
 
     NimBLEDevice::setSecurityAuth(true, true, true);
     NimBLEDevice::setSecurityIOCap(BLE_HS_IO_DISPLAY_ONLY);
     NimBLEDevice::setSecurityPasskey(123456);
-    BLEServer *pServer = BLEDevice::createServer();
-    BLEService *pService = pServer->createService(SERVICE_UUID);
-    BLECharacteristic *pCharacteristic = pService->createCharacteristic(
+    NimBLEServer *pServer = BLEDevice::createServer();
+    NimBLEService *pService = pServer->createService(SERVICE_UUID);
+    NimBLECharacteristic *pCharacteristic = pService->createCharacteristic(
         CHARACTERISTIC_UUID,
         NIMBLE_PROPERTY::READ |
             NIMBLE_PROPERTY::READ_AUTHEN |
@@ -49,42 +52,13 @@ void app_main(void)
 
     pCharacteristic->setValue("Hello World says Neil");
     pService->start();
-    // BLEAdvertising *pAdvertising = pServer->getAdvertising();  // this still is working for backward compatibility
-    BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
+
+    NimBLEAdvertising *pAdvertising = NimBLEDevice::getAdvertising();
     pAdvertising->addServiceUUID(SERVICE_UUID);
     pAdvertising->setScanResponse(true);
     pAdvertising->setMinPreferred(0x06); // functions that help with iPhone connections issue
     pAdvertising->setMinPreferred(0x12);
 
-    BLEDevice::startAdvertising();
-    printf("Characteristic defined! Now you can read it in your phone!\n");
-}
-
-void print_chip_info(void)
-{
-    /* Print chip information */
-    esp_chip_info_t chip_info;
-    uint32_t flash_size;
-    esp_chip_info(&chip_info);
-    printf("This is %s chip with %d CPU core(s), %s%s%s%s, ",
-           CONFIG_IDF_TARGET,
-           chip_info.cores,
-           (chip_info.features & CHIP_FEATURE_WIFI_BGN) ? "WiFi/" : "",
-           (chip_info.features & CHIP_FEATURE_BT) ? "BT" : "",
-           (chip_info.features & CHIP_FEATURE_BLE) ? "BLE" : "",
-           (chip_info.features & CHIP_FEATURE_IEEE802154) ? ", 802.15.4 (Zigbee/Thread)" : "");
-
-    unsigned major_rev = chip_info.revision / 100;
-    unsigned minor_rev = chip_info.revision % 100;
-    printf("silicon revision v%d.%d, ", major_rev, minor_rev);
-    if (esp_flash_get_size(NULL, &flash_size) != ESP_OK)
-    {
-        printf("Get flash size failed");
-        return;
-    }
-
-    printf("%" PRIu32 "MB %s flash\n", flash_size / (uint32_t)(1024 * 1024),
-           (chip_info.features & CHIP_FEATURE_EMB_FLASH) ? "embedded" : "external");
-
-    printf("Minimum free heap size: %" PRIu32 " bytes\n", esp_get_minimum_free_heap_size());
+    NimBLEDevice::startAdvertising();
+    ESP_LOGI(TAG, "Characteristic defined! Now you can read it in your phone!\n");
 }
