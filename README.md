@@ -1,0 +1,1 @@
+A simple test to check functionality of [esp-nimble-cpp](https://github.com/h2zero/esp-nimble-cpp)
