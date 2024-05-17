@@ -32,32 +32,57 @@ void app_main(void)
 
     NimBLEDevice::init("NimBLE Test");
 
+    // Does not appear to affect behavior of this test
+//    NimBLEDevice::setMTU(251);
+//    ESP_LOGI(TAG, "device mtu %d", NimBLEDevice::getMTU());
+
     ESP_LOGI(TAG, "Bonded devices:");
     for (int i = 0; i < NimBLEDevice::getNumBonds(); i++)
     {
         ESP_LOGI(TAG, "%d.: %s", i, NimBLEDevice::getBondedAddress(i).toString().c_str());
     }
 
-    NimBLEDevice::setSecurityAuth(true, true, true);
-    NimBLEDevice::setSecurityIOCap(BLE_HS_IO_DISPLAY_ONLY);
-    NimBLEDevice::setSecurityPasskey(123456);
+
+
+    // NOTE: bleprph example code results in iOS pairing dialog as soon as
+    // connecting to the device. This example, either Setting A or B, only
+    // requests pairing when the characteristic is accessed.
+
+
+
+    // Setting A - WORKS
+    // Pairs and bonds and will reconnect, even after esp32 reboot
+//    NimBLEDevice::setSecurityAuth(true, false, false);
+
+    // Setting B - DOESNT WORK
+    // Will pair and bond but will NOT reconnect
+    NimBLEDevice::setSecurityAuth(true, false, true);
+
+
+
+    // NimBLEDevice defaults to 'no input output'
+//    NimBLEDevice::setSecurityIOCap(BLE_HS_IO_NO_INPUT_OUTPUT);
+
     NimBLEServer *pServer = BLEDevice::createServer();
     NimBLEService *pService = pServer->createService(SERVICE_UUID);
     NimBLECharacteristic *pCharacteristic = pService->createCharacteristic(
         CHARACTERISTIC_UUID,
-        NIMBLE_PROPERTY::READ |
-            NIMBLE_PROPERTY::READ_AUTHEN |
+            NIMBLE_PROPERTY::READ |
+            NIMBLE_PROPERTY::READ_ENC |
             NIMBLE_PROPERTY::WRITE |
-            NIMBLE_PROPERTY::WRITE_AUTHEN);
+            NIMBLE_PROPERTY::WRITE_ENC
+        );
 
     pCharacteristic->setValue("Hello World says Neil");
     pService->start();
 
     NimBLEAdvertising *pAdvertising = NimBLEDevice::getAdvertising();
     pAdvertising->addServiceUUID(SERVICE_UUID);
-    pAdvertising->setScanResponse(true);
-    pAdvertising->setMinPreferred(0x06); // functions that help with iPhone connections issue
-    pAdvertising->setMinPreferred(0x12);
+
+    // Does not appear to affect bonding or pairing
+//    pAdvertising->setScanResponse(true);
+//    pAdvertising->setMinPreferred(0x06); // functions that help with iPhone connections issue
+//    pAdvertising->setMinPreferred(0x12);
 
     NimBLEDevice::startAdvertising();
     ESP_LOGI(TAG, "Characteristic defined! Now you can read it in your phone!\n");
