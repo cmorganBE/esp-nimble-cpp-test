@@ -82,7 +82,7 @@ class ServerCallbacks: public NimBLEServerCallbacks
 public:
     ServerCallbacks() {}
 
-    static void PrintConnctionInfo(NimBLEConnInfo &connInfo) {
+    static void PrintConnctionInfo(const NimBLEConnInfo &connInfo) {
         ESP_LOGI(TAG, "OTA address %s, type %d", connInfo.getAddress().toString().c_str(), connInfo.getAddress().getType());
         ESP_LOGI(TAG, "ID address %s, type %d", connInfo.getIdAddress().toString().c_str(), connInfo.getIdAddress().getType());
         ESP_LOGI(TAG, "Bonded: %s, Authenticated: %s, Encrypted: %s, Key size: %d",
@@ -119,7 +119,7 @@ public:
         ESP_LOGI(TAG, "MTU updated: %u for connection ID: %u", MTU, connInfo.getConnHandle());
     };
 
-    void onAuthenticationComplete(NimBLEConnInfo& connInfo) override {
+    void onAuthenticationComplete(const NimBLEConnInfo& connInfo) override {
         ESP_LOGI(TAG, "onAuthenticationComplete()");
         /** Check that encryption was successful, if not we disconnect the client */
         if(!connInfo.isEncrypted()) {
@@ -130,25 +130,35 @@ public:
             ESP_LOGI(TAG, "connection is encrypted");
         }
 
+        PrintConnctionInfo(connInfo);
+
 // Only add the ID address to the whitelist, this is the one that remain consistent
 // when connecting to the device(?)
-        NimBLEDevice::whiteListAdd(connInfo.getIdAddress());
+        NimBLEAddress peerAddr(connInfo.getIdAddress());
+        if (peerAddr.isRpa()) {
+            ESP_LOGI(TAG, "ID address is RPA, not adding to whitelist");
+            return;
+        }
 
-        PrintConnctionInfo(connInfo);
+        NimBLEDevice::whiteListAdd(connInfo.getIdAddress());
     };
 
+    void onIdentity(const NimBLEConnInfo& connInfo) override {
+        ESP_LOGI(TAG, "onIdentity(), adding peer ID address to whitelist");
+        NimBLEDevice::whiteListAdd(connInfo.getIdAddress());
+    }
+
     // Don't expect to get this call but want an informational printout if we do
-    uint32_t onPassKeyRequest() override
+    uint32_t onPassKeyDisplay() override
     {
         ESP_LOGE(TAG, "onPassKeyRequest()");
         return 0;
     }
 
     // Don't expect to get this call but want an informational printout if we do
-    bool onConfirmPIN(uint32_t pin) override
+    void onConfirmPIN(const NimBLEConnInfo& connInfo, uint32_t pin) override
     {
         ESP_LOGE(TAG, "onConfirmPin()");
-        return false;
     }
 };
 
@@ -164,13 +174,13 @@ void app_main(void)
         ESP_LOGI(TAG, "%d.: %s", i, NimBLEDevice::getBondedAddress(i).toString().c_str());
     }
 
-#ifdef WISH_THIS_WORKED
+//#ifdef WISH_THIS_WORKED
     // Will not reconnect after pairing and bonding when setScanFilter(false, true) (whitelist mode)
     NimBLEDevice::setSecurityAuth(true, false, true);
-#else
+//#else
     // This doesn't seem to work consistently either, appears to have nothing to do with SC setting...
-    NimBLEDevice::setSecurityAuth(true, false, false);
-#endif
+    //NimBLEDevice::setSecurityAuth(true, false, false);
+//#endif
 
     NimBLEServer *pServer = BLEDevice::createServer();
     pServer->setCallbacks(new ServerCallbacks());
