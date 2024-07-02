@@ -19,12 +19,6 @@
  * to connect. This is a temporal security feature, not great but for devices without any
  * display it is better than nothing.
  *
- *
- *
- * #ifdef WISH_THIS_WORKED attempts to use secure connections. Unfortunately with SC enabled
- *   the iOS device is unable to reconnect after bonding, when in 'whitelist' mode.
- *
- * #ifndef WISH_THIS_WORKED disables SC
  */
 
 #include <stdio.h>
@@ -174,13 +168,7 @@ void app_main(void)
         ESP_LOGI(TAG, "%d.: %s", i, NimBLEDevice::getBondedAddress(i).toString().c_str());
     }
 
-//#ifdef WISH_THIS_WORKED
-    // Will not reconnect after pairing and bonding when setScanFilter(false, true) (whitelist mode)
     NimBLEDevice::setSecurityAuth(true, false, true);
-//#else
-    // This doesn't seem to work consistently either, appears to have nothing to do with SC setting...
-    //NimBLEDevice::setSecurityAuth(true, false, false);
-//#endif
 
     NimBLEServer *pServer = BLEDevice::createServer();
     pServer->setCallbacks(new ServerCallbacks());
